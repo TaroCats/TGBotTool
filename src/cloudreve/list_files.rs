@@ -118,7 +118,7 @@ impl<'a> ListFilesBuilder<'a> {
 }
 
 impl CloudreveClient {
-    pub fn list_files(&self) -> ListFilesBuilder {
+    pub fn list_files(&self) -> ListFilesBuilder<'_> {
         ListFilesBuilder::new(self)
     }
 }
