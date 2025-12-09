@@ -1,0 +1,29 @@
+# Build artifacts
+target/
+**/*.rs.bk
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Environment variables
+.env
+.env.*
+
+# MacOS
+.DS_Store
+**/.DS_Store
+
+# Editor/IDE
+.vscode/
+.idea/
+.trae/
+*.swp
+*.swo
+
+# Logs
+*.log
