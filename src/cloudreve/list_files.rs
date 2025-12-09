@@ -84,7 +84,8 @@ impl<'a> ListFilesBuilder<'a> {
         if api_resp.code == 0 {
             let data = api_resp.data.unwrap_or(Value::Null);
             // Try to extract next_page_token from pagination object in data
-            let next_token = data.get("pagination")
+            let next_token = data
+                .get("pagination")
                 .and_then(|p| p.get("next_page_token")) // Standard might be page_token? Check doc.
                 // Re-checking doc: "next_page_token" is query param, response usually has it in meta or similar.
                 // Assuming standard cursor pagination where it might be in pagination object.
@@ -94,19 +95,19 @@ impl<'a> ListFilesBuilder<'a> {
                 // For now, let's extract it if present.
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            
+
             // Wait, standard Cloudreve list response usually has objects.
             // If it's cursor based, it might be in the response props.
-            // Let's return the whole data value and let the caller parse the token for now, 
+            // Let's return the whole data value and let the caller parse the token for now,
             // OR extracting it here is better.
-            
+
             // Let's try to find it in "pagination" object inside data.
             // data: { files: [...], pagination: { page: ..., page_size: ..., next_page_token: ...? } }
             // If it's cursor based.
-            
+
             // Actually, based on my previous read of V4 docs (from memory/search):
             // It might be data.pagination.next_page_token
-            
+
             Ok((data, next_token))
         } else {
             Err(anyhow!(

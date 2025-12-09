@@ -7,10 +7,10 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-mod list_files;
 mod file_source;
-mod remote_list;
+mod list_files;
 mod remote_download;
+mod remote_list;
 
 #[derive(Default, Debug)]
 struct ClientState {
