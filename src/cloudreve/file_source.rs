@@ -1,7 +1,5 @@
 use crate::cloudreve::{CloudreveClient, DirectoryResponse};
 use anyhow::{anyhow, Result};
-use reqwest;
-use serde_json;
 
 impl CloudreveClient {
     pub async fn list_file_source(&self, uri: &str) -> Result<String> {

@@ -62,7 +62,7 @@ impl CloudreveClient {
         let url = format!("{}/session/token", self.base_url);
         let body = LoginRequest {
             email: username,
-            password: password,
+            password,
         };
 
         let resp = self.client.post(&url).json(&body).send().await?;

@@ -7,7 +7,6 @@
 use crate::cloudreve::{CloudreveClient, DirectoryResponse};
 use anyhow::{anyhow, Result};
 use log::info;
-use reqwest;
 use serde_json::Value;
 use std::env;
 
@@ -61,7 +60,7 @@ impl<'a> ListFilesBuilder<'a> {
 
         let resp = self
             .client
-            .request_builder(reqwest::Method::GET, &path_url)
+            .request_builder(reqwest::Method::GET, path_url)
             .await
             .query(&[("uri", &uri)])
             .query(&[(

@@ -1,5 +1,10 @@
+/*
+ * @Author: taro etsy@live.com
+ * @LastEditors: taro etsy@live.com
+ * @LastEditTime: 2025-12-09 15:07:46
+ * @Description: 
+ */
 use crate::cloudreve::CloudreveClient;
-use reqwest;
 
 impl CloudreveClient {
     pub(crate) async fn request_builder(

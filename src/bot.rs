@@ -1,7 +1,7 @@
 /*
  * @Author: taro etsy@live.com
  * @LastEditors: taro etsy@live.com
- * @LastEditTime: 2025-12-09 14:41:24
+ * @LastEditTime: 2025-12-09 15:20:34
  * @Description:
  */
 use crate::cloudreve::CloudreveClient;
@@ -30,7 +30,6 @@ type PageTokenCache = Arc<Mutex<HashMap<String, String>>>;
     rename_rule = "lowercase",
     description = "These commands are supported:"
 )]
-
 pub enum Command {
     #[command(description = "List files in the current or specified directory.")]
     List(String),
@@ -62,17 +61,25 @@ pub async fn answer(
 
 pub async fn get_download_status(
     bot: Bot,
-    msg: Message,
+    chat_id: ChatId,
+    message_id: MessageId,
     url: &str,
     client: Arc<CloudreveClient>,
 ) -> Result<()> {
     let url = url.to_string();
-    let chat_id = msg.chat.id;
-    let message_id = msg.id;
-    bot.edit_message_text(chat_id, message_id, "正在获取下载状态...")
+
+    // Send initial message
+    let status_msg = bot
+        .edit_message_text(chat_id, message_id, "正在获取下载状态...")
         .await?;
+
+    let chat_id = status_msg.chat.id;
+    let message_id = status_msg.id;
+
     loop {
         sleep(Duration::from_secs(5)).await;
+        bot.edit_message_text(chat_id, message_id, "正在获取下载状态...")
+            .await?;
         match client.search_remote_list_by_url("downloading", &url).await {
             Ok(resp) => {
                 let name = resp
@@ -92,6 +99,7 @@ pub async fn get_download_status(
                     "<b>{}</b>\n文件大小: {}\n下载进度: {}%",
                     name, size_str, progress_str
                 );
+
                 // Edit the message
                 match bot
                     .edit_message_text(chat_id, message_id, text)
@@ -124,16 +132,24 @@ pub async fn send_remote_download(
     msg: Message,
     url: &str,
     client: Arc<CloudreveClient>,
-) -> Result<(), anyhow::Error> {
-    match client.remote_download(&url).await {
+) -> Result<()> {
+    match client.remote_download(url).await {
         Ok(_) => {
-            let msg = bot
-                .edit_message_text(msg.chat.id, msg.id, format!("远程下载成功"))
+            let sent_msg = bot
+                .edit_message_text(msg.chat.id, msg.id, "远程下载成功".to_string())
                 .await?;
-            let _ = get_download_status(bot.clone(), msg.clone(), &url, client.clone()).await;
+            let _ = get_download_status(
+                bot.clone(),
+                sent_msg.chat.id,
+                sent_msg.id,
+                url,
+                client.clone(),
+            )
+            .await;
         }
         Err(e) => {
-            bot.edit_message_text(msg.chat.id, msg.id, format!("远程下载失败: {}", e))
+            bot.send_message(msg.chat.id, format!("远程下载失败: {}", e))
+                .reply_parameters(ReplyParameters::new(msg.id))
                 .await?;
         }
     }
@@ -384,7 +400,7 @@ pub async fn list_files_and_send(
 }
 
 pub async fn answer_message_by_link(bot: Bot, msg: Message, url: &str) -> ResponseResult<()> {
-    let source_link = match get_source_link(&url).await {
+    let source_link = match get_source_link(url).await {
         Ok(source_link) => source_link,
         Err(e) => format!("解析链接失败: {}", e),
     };
@@ -410,9 +426,9 @@ pub async fn message_handler(bot: Bot, msg: Message) -> ResponseResult<()> {
             | teloxide::types::MessageEntityKind::TextLink { .. } = &entity.kind
             {
                 let url = match &entity.kind {
-                    teloxide::types::MessageEntityKind::Url => text
-                        [entity.offset as usize..(entity.offset + entity.length) as usize]
-                        .to_string(),
+                    teloxide::types::MessageEntityKind::Url => {
+                        text[entity.offset..(entity.offset + entity.length)].to_string()
+                    }
                     teloxide::types::MessageEntityKind::TextLink { url } => url.to_string(),
                     _ => continue,
                 };
@@ -433,7 +449,7 @@ pub async fn message_handler(bot: Bot, msg: Message) -> ResponseResult<()> {
                 }
             }
             _ => {
-                bot.send_message(msg.chat.id, format!("无法解析来源链接"))
+                bot.send_message(msg.chat.id, "无法解析来源链接".to_string())
                     .reply_parameters(ReplyParameters::new(msg.id))
                     .await?;
             }
@@ -447,17 +463,16 @@ pub async fn get_source_link(url: &str) -> Result<String> {
     let text = resp.text().await?;
     let api_resp: Value = serde_json::from_str(&text)
         .map_err(|e| anyhow!("Failed to parse response: {} - {}", e, text))?;
-    if api_resp
+    if !api_resp
         .get("ok")
         .and_then(|v| v.as_bool())
         .unwrap_or(false)
-        != true
     {
         return Err(anyhow!("Failed to resolve URL"));
     }
     if let Some(download_url) = api_resp.get("stream_link").and_then(|v| v.as_str()) {
         Ok(download_url.to_string())
     } else {
-        return Err(anyhow!("Failed to resolve URL"));
+        Err(anyhow!("Failed to resolve URL"))
     }
 }
